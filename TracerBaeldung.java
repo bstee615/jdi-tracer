@@ -30,17 +30,26 @@ import com.sun.jdi.event.StepEvent;
 import com.sun.jdi.request.BreakpointRequest;
 import com.sun.jdi.request.ClassPrepareRequest;
 import com.sun.jdi.request.StepRequest;
+import com.sun.jdi.request.EventRequestManager;
+import com.sun.jdi.VirtualMachineManager;
+import com.sun.jdi.Method;
+import java.util.function.Consumer;
+import java.util.List;
 
 public class TracerBaeldung {
 
-    private Class debugClass; 
     private int[] breakPointLines;
+    private String debugClass;
 
-    public Class getDebugClass() {
+    public TracerBaeldung()
+    {
+    }
+
+    public String getDebugClass() {
         return debugClass;
     }
 
-    public void setDebugClass(Class debugClass) {
+    public void setDebugClass(String debugClass) {
         this.debugClass = debugClass;
     }
 
@@ -62,7 +71,7 @@ public class TracerBaeldung {
     public VirtualMachine connectAndLaunchVM() throws IOException, IllegalConnectorArgumentsException, VMStartException {
         LaunchingConnector launchingConnector = Bootstrap.virtualMachineManager().defaultConnector();
         Map<String, Connector.Argument> arguments = launchingConnector.defaultArguments();
-        arguments.get("main").setValue(debugClass.getName());
+        arguments.get("main").setValue(debugClass);
         VirtualMachine vm = launchingConnector.launch(arguments);
         return vm;
     }
@@ -73,7 +82,7 @@ public class TracerBaeldung {
      */
     public void enableClassPrepareRequest(VirtualMachine vm) {
         ClassPrepareRequest classPrepareRequest = vm.eventRequestManager().createClassPrepareRequest();
-        classPrepareRequest.addClassFilter(debugClass.getName());
+        classPrepareRequest.addClassFilter(debugClass);
         classPrepareRequest.enable();
     }
 
@@ -100,7 +109,7 @@ public class TracerBaeldung {
      */
     public void displayVariables(LocatableEvent event) throws IncompatibleThreadStateException, AbsentInformationException {
         StackFrame stackFrame = event.thread().frame(0);
-        if(stackFrame.location().toString().contains(debugClass.getName())) {
+        if(stackFrame.location().toString().contains(debugClass)) {
             Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(stackFrame.visibleVariables());
             System.out.println("Variables at " +stackFrame.location().toString() +  " > ");
             for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
@@ -116,38 +125,71 @@ public class TracerBaeldung {
      */
     public void enableStepRequest(VirtualMachine vm, BreakpointEvent event) {
         //enable step request for last break point
-        if(event.location().toString().contains(debugClass.getName()+":"+breakPointLines[breakPointLines.length-1])) {
+        if(event.location().toString().contains(debugClass+":"+breakPointLines[breakPointLines.length-1])) {
             StepRequest stepRequest = vm.eventRequestManager().createStepRequest(event.thread(), StepRequest.STEP_LINE, StepRequest.STEP_OVER);
             stepRequest.enable();    
         }
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception
+    {
+        String main;
+        String classPattern;
+        main = classPattern = args[0];
+        String methodName = args[1];
+
+        System.out.println(main + " " + classPattern + " " + methodName);
 
         TracerBaeldung debuggerInstance = new TracerBaeldung();
-        debuggerInstance.setDebugClass(HelloWorld.class);
-        // int[] breakPoints = {12, 16};
-        int[] breakPoints = {10};
-        debuggerInstance.setBreakPointLines(breakPoints);
-        VirtualMachine vm = null;
+
+        VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
+        LaunchingConnector lc = vmm.defaultConnector();
+        Map<String, Connector.Argument> env = lc.defaultArguments();
+        env.get("main").setValue(main);
+        VirtualMachine vm = lc.launch(env);
+
+        // request prepare event for given class pattern
+        EventRequestManager erm = vm.eventRequestManager();
+        ClassPrepareRequest r = erm.createClassPrepareRequest();
+        r.addClassFilter(classPattern);
+        r.enable();
 
         try {
-            vm = debuggerInstance.connectAndLaunchVM();
-            debuggerInstance.enableClassPrepareRequest(vm);
-
             EventSet eventSet = null;
             while ((eventSet = vm.eventQueue().remove()) != null) {
                 for (Event event : eventSet) {
+                    // first called
                     if (event instanceof ClassPrepareEvent) {
-                        debuggerInstance.setBreakPoints(vm, (ClassPrepareEvent)event);
+                        ClassPrepareEvent evt = (ClassPrepareEvent)event;
+                        ClassType classType = (ClassType) evt.referenceType();
+                        debuggerInstance.setDebugClass(classType.name());
+                        // Set breakpoint on method by name
+                        classType.methodsByName(methodName).forEach(new Consumer<Method>() {
+                            @Override
+                            public void accept(Method m) {
+                                List<Location> locations = null;
+                                try {
+                                    locations = m.allLineLocations();
+                                } catch (AbsentInformationException ex) {
+                                    System.out.println(ex);
+                                }
+                                // get the first line location of the function and enable the break point
+                                Location location = locations.get(0);
+                                debuggerInstance.setBreakPointLines(new int[]{location.lineNumber()});
+                                BreakpointRequest bpReq = erm.createBreakpointRequest(location);
+                                bpReq.enable();
+                            }
+                        });
                     }
 
+                    // second called
                     if (event instanceof BreakpointEvent) {
                         event.request().disable();
                         debuggerInstance.displayVariables((BreakpointEvent) event);
                         debuggerInstance.enableStepRequest(vm, (BreakpointEvent)event);
                     }
 
+                    // third called over and over
                     if (event instanceof StepEvent) {
                         debuggerInstance.displayVariables((StepEvent) event);
                     }
