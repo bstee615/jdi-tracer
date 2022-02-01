@@ -35,8 +35,85 @@ import com.sun.jdi.VirtualMachineManager;
 import com.sun.jdi.Method;
 import java.util.function.Consumer;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TracerBaeldung {
+    
+    class StreamRedirector {
+        InputStreamReader input;
+        OutputStreamWriter output;
+        private final AtomicBoolean isRunning = new AtomicBoolean(true);
+        Thread thread;
+
+        StreamRedirector(OutputStreamWriter output)
+        {
+            this.input = new InputStreamReader(System.in);
+            this.output = output;
+            this.thread = new Thread(() -> {
+                char[] buf = new char[512];
+                try{
+                    while (isRunning.get())
+                    {
+                        if (input.ready())
+                        {
+                            input.read(buf);
+                            output.write(buf);
+                            output.flush();
+                        }
+                    }
+                    if (input.ready())
+                    {
+                        input.read(buf);
+                        output.write(buf);
+                        output.flush();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.out.println("Error redirecting System.in to program output: " + ex);
+                }
+            });
+            thread.start();
+        }
+
+        StreamRedirector(InputStreamReader input)
+        {
+            this.input = input;
+            this.output = new OutputStreamWriter(System.out);
+            this.thread = new Thread(() -> {
+                char[] buf = new char[512];
+                try
+                {
+                    while (isRunning.get())
+                    {
+                        if (input.ready())
+                        {
+                            input.read(buf);
+                            output.write(buf);
+                            output.flush();
+                        }
+                    }
+                    if (input.ready())
+                    {
+                        input.read(buf);
+                        output.write(buf);
+                        output.flush();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.out.println("Error redirecting program input to System.out: " + ex);
+                }
+            });
+            thread.start();
+        }
+
+        void shutdown() throws InterruptedException
+        {
+            isRunning.set(false);
+            thread.join();
+        }
+    }
 
     private int[] breakPointLines;
     private String debugClass;
@@ -44,6 +121,8 @@ public class TracerBaeldung {
 
     VirtualMachine vm;
     EventRequestManager erm;
+    StreamRedirector inOut;
+    StreamRedirector outIn;
 
     public TracerBaeldung(String className, String methodName) throws IOException, IllegalConnectorArgumentsException, VMStartException
     {
@@ -52,6 +131,9 @@ public class TracerBaeldung {
         Map<String, Connector.Argument> env = lc.defaultArguments();
         env.get("main").setValue(className);
         vm = lc.launch(env);
+
+        inOut = new StreamRedirector(new OutputStreamWriter(vm.process().getOutputStream()));
+        outIn = new StreamRedirector(new InputStreamReader(vm.process().getInputStream()));
 
         // request prepare event for given class pattern
         erm = vm.eventRequestManager();
@@ -76,7 +158,8 @@ public class TracerBaeldung {
      * @throws IncompatibleThreadStateException
      * @throws AbsentInformationException
      */
-    public void displayVariables(LocatableEvent event) throws IncompatibleThreadStateException, AbsentInformationException {
+    public void displayVariables(LocatableEvent event) throws IOException, IncompatibleThreadStateException, AbsentInformationException {
+        // System.out.println("Event:" + event);
         StackFrame stackFrame = event.thread().frame(0);
         if(stackFrame.location().toString().contains(debugClass)) {
             Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(stackFrame.visibleVariables());
@@ -100,7 +183,7 @@ public class TracerBaeldung {
         }
     }
 
-    public void handleEvent(Event event) throws AbsentInformationException, IllegalConnectorArgumentsException, IncompatibleThreadStateException
+    public void handleEvent(Event event) throws IOException, AbsentInformationException, IllegalConnectorArgumentsException, IncompatibleThreadStateException
     {
         // first called
         if (event instanceof ClassPrepareEvent) {
@@ -149,14 +232,10 @@ public class TracerBaeldung {
         return vm.eventQueue().remove();
     }
 
-    public InputStreamReader getInputStreamReader()
+    public void shutdown() throws InterruptedException
     {
-        return new InputStreamReader(vm.process().getInputStream());
-    }
-
-    public OutputStreamWriter getOutputStreamWriter()
-    {
-        return new OutputStreamWriter(System.out);
+        this.inOut.shutdown();
+        this.outIn.shutdown();
     }
 
     public static void main(String[] args) throws Exception
@@ -168,26 +247,26 @@ public class TracerBaeldung {
 
         TracerBaeldung debuggerInstance = new TracerBaeldung(classPattern, methodName);
         
-        try {
+        try
+        {
             EventSet eventSet = null;
             while ((eventSet = debuggerInstance.popEventSet()) != null) {
                 for (Event event : eventSet) {
                     debuggerInstance.handleEvent(event);
                 }
             }
-        } catch (VMDisconnectedException e) {
+        }
+        catch (VMDisconnectedException e)
+        {
             System.out.println("Virtual Machine is disconnected.");
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             e.printStackTrace();
         } 
-        finally {
-            InputStreamReader reader = debuggerInstance.getInputStreamReader();
-            OutputStreamWriter writer = debuggerInstance.getOutputStreamWriter();
-            char[] buf = new char[512];
-
-            reader.read(buf);
-            writer.write(buf);
-            writer.flush();
+        finally
+        {
+            debuggerInstance.shutdown();
         }
     }
 }
