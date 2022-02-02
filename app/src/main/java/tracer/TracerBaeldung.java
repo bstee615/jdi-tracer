@@ -3,11 +3,6 @@
  */
 package tracer;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.util.Map;
-
 import com.sun.jdi.AbsentInformationException;
 import com.sun.jdi.Bootstrap;
 import com.sun.jdi.ClassType;
@@ -36,86 +31,12 @@ import com.sun.jdi.VirtualMachineManager;
 import com.sun.jdi.Method;
 import java.util.function.Consumer;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Map;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.IOException;
 
 public class TracerBaeldung {
-    
-    class StreamRedirector {
-        InputStreamReader input;
-        OutputStreamWriter output;
-        private final AtomicBoolean isRunning = new AtomicBoolean(true);
-        Thread thread;
-
-        StreamRedirector(OutputStreamWriter output)
-        {
-            this.input = new InputStreamReader(System.in);
-            this.output = output;
-            this.thread = new Thread(() -> {
-                char[] buf = new char[512];
-                try{
-                    while (isRunning.get())
-                    {
-                        if (input.ready())
-                        {
-                            input.read(buf);
-                            output.write(buf);
-                            output.flush();
-                        }
-                    }
-                    if (input.ready())
-                    {
-                        input.read(buf);
-                        output.write(buf);
-                        output.flush();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.out.println("Error redirecting System.in to program output: " + ex);
-                }
-            });
-            thread.start();
-        }
-
-        StreamRedirector(InputStreamReader input)
-        {
-            this.input = input;
-            this.output = new OutputStreamWriter(System.out);
-            this.thread = new Thread(() -> {
-                char[] buf = new char[512];
-                try
-                {
-                    while (isRunning.get())
-                    {
-                        if (input.ready())
-                        {
-                            input.read(buf);
-                            output.write(buf);
-                            output.flush();
-                        }
-                    }
-                    if (input.ready())
-                    {
-                        input.read(buf);
-                        output.write(buf);
-                        output.flush();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.out.println("Error redirecting program input to System.out: " + ex);
-                }
-            });
-            thread.start();
-        }
-
-        void shutdown() throws InterruptedException
-        {
-            isRunning.set(false);
-            thread.join();
-        }
-    }
-
     private int[] breakPointLines;
     private String debugClass;
     private String methodName;
