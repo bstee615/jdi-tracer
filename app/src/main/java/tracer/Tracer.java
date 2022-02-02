@@ -1,6 +1,3 @@
-/**
- * https://www.baeldung.com/java-debug-interface
- */
 package tracer;
 
 import com.sun.jdi.AbsentInformationException;
@@ -10,7 +7,6 @@ import com.sun.jdi.IncompatibleThreadStateException;
 import com.sun.jdi.LocalVariable;
 import com.sun.jdi.Location;
 import com.sun.jdi.StackFrame;
-import com.sun.jdi.VMDisconnectedException;
 import com.sun.jdi.Value;
 import com.sun.jdi.VirtualMachine;
 import com.sun.jdi.connect.Connector;
@@ -36,7 +32,11 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.IOException;
 
-public class TracerBaeldung {
+/**
+ * Trace a class/method with JDI
+ * Adapted from https://www.baeldung.com/java-debug-interface
+ */
+public class Tracer {
     private int[] breakPointLines;
     private String debugClass;
     private String methodName;
@@ -46,7 +46,7 @@ public class TracerBaeldung {
     StreamRedirector inOut;
     StreamRedirector outIn;
 
-    public TracerBaeldung(String className, String methodName) throws IOException, IllegalConnectorArgumentsException, VMStartException
+    public Tracer(String className, String methodName) throws IOException, IllegalConnectorArgumentsException, VMStartException
     {
         VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
         LaunchingConnector lc = vmm.defaultConnector();
@@ -158,37 +158,5 @@ public class TracerBaeldung {
     {
         this.inOut.shutdown();
         this.outIn.shutdown();
-    }
-
-    public static void main(String[] args) throws Exception
-    {
-        String classPattern = args[0];
-        String methodName = args[1];
-
-        System.out.println(classPattern + " " + methodName);
-
-        TracerBaeldung debuggerInstance = new TracerBaeldung(classPattern, methodName);
-        
-        try
-        {
-            EventSet eventSet = null;
-            while ((eventSet = debuggerInstance.popEventSet()) != null) {
-                for (Event event : eventSet) {
-                    debuggerInstance.handleEvent(event);
-                }
-            }
-        }
-        catch (VMDisconnectedException e)
-        {
-            System.out.println("Virtual Machine is disconnected.");
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        } 
-        finally
-        {
-            debuggerInstance.shutdown();
-        }
     }
 }
