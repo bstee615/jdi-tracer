@@ -1,6 +1,7 @@
 /**
  * https://www.baeldung.com/java-debug-interface
  */
+package tracer;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
