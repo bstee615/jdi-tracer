@@ -5,58 +5,73 @@
 package tracer;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class StreamRedirector {
+public class StreamRedirector implements AutoCloseable {
     private Thread thread;
 
     private final AtomicBoolean isRunning = new AtomicBoolean(true);
 
-    public StreamRedirector(OutputStreamWriter output)
+    public StreamRedirector(OutputStream output)
     {
-        InputStreamReader input = new InputStreamReader(System.in);
-        thread = new Thread(() -> redirectOnLoop(input, output));
+        InputStream input = System.in;
+        thread = new Thread(() -> redirectOnLoop(input, output, false));
         thread.start();
     }
 
-    public StreamRedirector(InputStreamReader input)
+    public StreamRedirector(InputStream input)
     {
-        OutputStreamWriter output = new OutputStreamWriter(System.out);
-        thread = new Thread(() -> redirectOnLoop(input, output));
+        OutputStream output = System.out;
+        thread = new Thread(() -> redirectOnLoop(input, output, true));
         thread.start();
     }
 
-    void redirectOnLoop(InputStreamReader input, OutputStreamWriter output)
+    void redirectOnLoop(InputStream input, OutputStream output, boolean waitForInput)
     {
-        char[] buf = new char[512];
+        byte[] buf = new byte[1024];
         try{
             // query input on a loop
             while (isRunning.get())
             {
-                if (input.ready())
+                if (input.available() == 0)
                 {
-                    input.read(buf);
-                    output.write(buf);
+                    if (waitForInput)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                    // System.out.printf("Close %s -> %s\n", input, output);
+                }
+                int n;
+                if ((n = input.read(buf)) > -1)
+                {
+                    // System.out.printf("Read %d \"%s\"\n", n, new String(buf));
+                    output.write(buf, 0, n);
                     output.flush();
                 }
             }
-            // query input one more time
-            if (input.ready())
+            if (input != System.in)
             {
-                input.read(buf);
-                output.write(buf);
-                output.flush();
+                input.close();
+            }
+            if (output != System.out)
+            {
+                output.close();
             }
         }
         catch (Exception ex)
         {
-            System.out.println("Error redirecting: " + ex);
+            System.out.println("Error redirecting: " + ex + " " + input + " " + output);
         }
     }
 
-    void shutdown() throws InterruptedException
+    public void close() throws Exception
     {
         isRunning.set(false);
         thread.join();
