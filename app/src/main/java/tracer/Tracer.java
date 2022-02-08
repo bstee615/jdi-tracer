@@ -173,7 +173,7 @@ public class Tracer implements AutoCloseable {
                         // https://github.com/SpoonLabs/nopol/blob/master/nopol/src/main/java/fr/inria/lille/repair/synthesis/collect/DynamothDataCollector.java#L428
                         ObjectReference objectReference = ((ObjectReference) value);
                         Method toStringMethod = objectReference.referenceType().methodsByName(
-                                "toString").get(0);
+                                "toString", "()Ljava/lang/String;").get(0);
                         String valueString = objectReference.invokeMethod(event.thread(),
                                 toStringMethod, Collections.emptyList(),
                                 ObjectReference.INVOKE_SINGLE_THREADED).toString();
