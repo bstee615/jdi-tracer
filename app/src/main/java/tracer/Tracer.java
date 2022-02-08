@@ -81,14 +81,6 @@ public class Tracer implements AutoCloseable {
     public EventSet popEventSet() throws InterruptedException
     {
         EventSet set = vm.eventQueue().remove(60 * 1000);
-        // if (set != null)
-        // {
-        //     System.out.println("popEventSet " + set.size());
-        // }
-        // else
-        // {
-        //     System.out.println("popEventSet null");
-        // }
         if (set == null)
         {
             System.out.println("Timed out waiting for EventSet");
@@ -107,7 +99,6 @@ public class Tracer implements AutoCloseable {
      */
     public void handleEvent(Event event) throws Exception
     {
-        // System.out.println("handleEvent called! " + event.getClass().getName());
         // first called
         if (event instanceof ClassPrepareEvent) {
             ClassPrepareEvent evt = (ClassPrepareEvent)event;
@@ -136,7 +127,6 @@ public class Tracer implements AutoCloseable {
     public void setBreakpoint(ClassPrepareEvent event)throws Exception
     {
         ClassType classType = (ClassType) event.referenceType();
-        // System.out.println("setBreakpoint called! " + classType.name() + " " + methodName);
         setDebugClassName(classType.name());
         
         // Set breakpoint on method by name
@@ -151,7 +141,6 @@ public class Tracer implements AutoCloseable {
                 }
                 // get the first line location of the function and enable the break point
                 Location location = locations.get(0);
-                // System.out.println("method called! " + location.toString());
                 setBreakPointLines(new int[]{location.lineNumber()});
                 BreakpointRequest bpReq = erm.createBreakpointRequest(location);
                 bpReq.enable();
@@ -165,22 +154,14 @@ public class Tracer implements AutoCloseable {
      * @throws IncompatibleThreadStateException
      * @throws AbsentInformationException
      */
-    public void displayVariables(LocatableEvent event) throws IOException, AbsentInformationException {
-        // System.out.println("displayVariables called!");
-        try
-        {
-            StackFrame stackFrame = event.thread().frame(0);
-            if(stackFrame.location().toString().contains(debugClass)) {
-                Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(stackFrame.visibleVariables());
-                System.out.println("Variables at " +stackFrame.location().toString());
-                for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
-                    System.out.println(entry.getKey().name() + " = " + entry.getValue());
-                }
+    public void displayVariables(LocatableEvent event) throws IOException, AbsentInformationException, IncompatibleThreadStateException {
+        StackFrame stackFrame = event.thread().frame(0);
+        if(stackFrame.location().toString().contains(debugClass)) {
+            Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(stackFrame.visibleVariables());
+            System.out.println("Variables at " +stackFrame.location().toString());
+            for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
+                System.out.println(entry.getKey().name() + " = " + entry.getValue());
             }
-        }
-        catch (IncompatibleThreadStateException ex)
-        {
-
         }
     }
 
@@ -190,7 +171,6 @@ public class Tracer implements AutoCloseable {
      * @param event
      */
     public void enableStepRequest(BreakpointEvent event) {
-        // System.out.println("enableStepRequest called! " + event.location().toString());
         //enable step request for last break point
         if(event.location().toString().contains(debugClass+":"+breakPointLines[breakPointLines.length-1])) {
             StepRequest stepRequest = vm.eventRequestManager().createStepRequest(event.thread(), StepRequest.STEP_LINE, StepRequest.STEP_OVER);
