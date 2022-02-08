@@ -5,7 +5,7 @@ import com.sun.jdi.event.EventSet;
 import com.sun.jdi.VMDisconnectedException;
 
 public class App {
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         if (args.length < 2) {
             System.out.println("Usage: App.java <classPattern> <methodName>");
             return;
@@ -16,9 +16,8 @@ public class App {
 
         System.out.printf("Analyzing %s.%s()\n", classPattern, methodName);
 
-        Tracer debuggerInstance = new Tracer(classPattern, methodName);
-        try {
-            EventSet eventSet = null;
+        try (Tracer debuggerInstance = new Tracer(classPattern, methodName)) {
+            EventSet eventSet;
             while ((eventSet = debuggerInstance.popEventSet()) != null) {
                 for (Event event : eventSet) {
                     debuggerInstance.handleEvent(event);
@@ -28,8 +27,6 @@ public class App {
             System.out.println("Virtual Machine is disconnected.");
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            debuggerInstance.close();
         }
     }
 }

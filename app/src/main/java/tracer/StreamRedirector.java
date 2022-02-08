@@ -4,17 +4,15 @@
 
 package tracer;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Redirect InputStream to OutputStream on a loop.
  */
 public class StreamRedirector implements AutoCloseable {
-    private Thread thread;
+    private final Thread thread;
 
     private final AtomicBoolean isRunning = new AtomicBoolean(true);
 
@@ -69,6 +67,7 @@ public class StreamRedirector implements AutoCloseable {
             }
         } catch (Exception ex) {
             System.out.println("Error redirecting: " + ex + " " + input + " " + output);
+            ex.printStackTrace();
         }
     }
 

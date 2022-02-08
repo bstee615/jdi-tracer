@@ -1,37 +1,16 @@
 package tracer;
 
-import com.sun.jdi.AbsentInformationException;
-import com.sun.jdi.Bootstrap;
-import com.sun.jdi.ClassType;
-import com.sun.jdi.IncompatibleThreadStateException;
-import com.sun.jdi.LocalVariable;
-import com.sun.jdi.Location;
-import com.sun.jdi.StackFrame;
-import com.sun.jdi.Value;
-import com.sun.jdi.VirtualMachine;
+import com.sun.jdi.*;
 import com.sun.jdi.connect.Connector;
-import com.sun.jdi.connect.IllegalConnectorArgumentsException;
 import com.sun.jdi.connect.LaunchingConnector;
-import com.sun.jdi.connect.VMStartException;
-import com.sun.jdi.event.BreakpointEvent;
-import com.sun.jdi.event.ClassPrepareEvent;
-import com.sun.jdi.event.Event;
-import com.sun.jdi.event.EventSet;
-import com.sun.jdi.event.LocatableEvent;
-import com.sun.jdi.event.StepEvent;
+import com.sun.jdi.event.*;
 import com.sun.jdi.request.BreakpointRequest;
 import com.sun.jdi.request.ClassPrepareRequest;
-import com.sun.jdi.request.StepRequest;
 import com.sun.jdi.request.EventRequestManager;
-import com.sun.jdi.VirtualMachineManager;
-import com.sun.jdi.Method;
+import com.sun.jdi.request.StepRequest;
 
-import java.util.function.Consumer;
 import java.util.List;
 import java.util.Map;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.IOException;
 
 /**
  * Trace a class/method with JDI
@@ -40,7 +19,7 @@ import java.io.IOException;
 public class Tracer implements AutoCloseable {
     private int[] breakPointLines;
     private String debugClass;
-    private String methodName;
+    private final String methodName;
 
     VirtualMachine vm;
     EventRequestManager erm;
@@ -104,7 +83,6 @@ public class Tracer implements AutoCloseable {
 
     /**
      * Close this resource, closing down input redirection threads.
-     * @throws Exception
      */
     public void close() throws Exception {
         this.inOut.close();
@@ -143,33 +121,31 @@ public class Tracer implements AutoCloseable {
     /**
      * Set a breakpoint on the first line of method methodName.
      */
-    public void setBreakpoint(ClassPrepareEvent event) throws Exception {
+    public void setBreakpoint(ClassPrepareEvent event) {
         ClassType classType = (ClassType) event.referenceType();
         setDebugClassName(classType.name());
 
         // Set breakpoint on method by name
-        classType.methodsByName(methodName).forEach(new Consumer<Method>() {
-            @Override
-            public void accept(Method m) {
-                List<Location> locations = null;
-                try {
-                    locations = m.allLineLocations();
-                } catch (AbsentInformationException ex) {
-                    System.out.println(ex);
-                }
-                // get the first line location of the function and enable the break point
-                Location location = locations.get(0);
-                setBreakPointLines(new int[]{location.lineNumber()});
-                BreakpointRequest bpReq = erm.createBreakpointRequest(location);
-                bpReq.enable();
+        classType.methodsByName(methodName).forEach(m -> {
+            List<Location> locations = null;
+            try {
+                locations = m.allLineLocations();
+            } catch (AbsentInformationException e) {
+                e.printStackTrace();
             }
+            // get the first line location of the function and enable the break point
+            assert locations != null;
+            Location location = locations.get(0);
+            setBreakPointLines(new int[]{location.lineNumber()});
+            BreakpointRequest bpReq = erm.createBreakpointRequest(location);
+            bpReq.enable();
         });
     }
 
     /**
      * Displays the visible variables at the current program point.
      */
-    public void displayVariables(LocatableEvent event) throws IOException, AbsentInformationException, IncompatibleThreadStateException {
+    public void displayVariables(LocatableEvent event) throws AbsentInformationException, IncompatibleThreadStateException {
         StackFrame stackFrame = event.thread().frame(0);
         if (stackFrame.location().toString().contains(debugClass)) {
             Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(stackFrame.visibleVariables());
