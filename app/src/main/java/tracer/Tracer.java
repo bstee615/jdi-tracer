@@ -155,15 +155,15 @@ public class Tracer implements AutoCloseable {
             Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(
                     stackFrame.visibleVariables());
             writer.append(String.format("<program_point location=\"%s\">\n",
-                                        stackFrame.location().toString()));
+                    stackFrame.location().toString()));
             for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
                 LocalVariable localVariable = entry.getKey();
                 Value value = entry.getValue();
                 if (value instanceof ArrayReference) {
                     ArrayReference arr = ((ArrayReference) value);
                     writer.append(String.format("<variable type=\"%s\" name=\"%s\">%s</variable>\n",
-                                                arr.getClass().getName(), localVariable.name(),
-                                                arr.getValues().toString()));
+                            arr.getClass().getName(), localVariable.name(),
+                            arr.getValues().toString()));
                 } else if (value instanceof ObjectReference) {
                     // https://stackoverflow.com/a/59012879/8999671
                     // Method callMethod gets its ThreadReference from the event in this example.
@@ -172,17 +172,15 @@ public class Tracer implements AutoCloseable {
                     Method toStringMethod = objectReference.referenceType().methodsByName(
                             "toString").get(0);
                     String valueString = objectReference.invokeMethod(event.thread(),
-                                                                      toStringMethod,
-                                                                      Collections.emptyList(),
-                                                                      ObjectReference.INVOKE_SINGLE_THREADED).toString();
+                            toStringMethod, Collections.emptyList(),
+                            ObjectReference.INVOKE_SINGLE_THREADED).toString();
                     writer.append(String.format(
                             "<variable type=\"%s\" name=\"%s\" proxy=\"%s\">%s</variable>\n",
                             objectReference.referenceType().name(), localVariable.name(),
                             toStringMethod.toString(), valueString));
                 } else {
                     writer.append(String.format("<variable type=\"%s\" name=\"%s\">%s</variable>\n",
-                                                value.getClass().getName(), localVariable.name(),
-                                                value));
+                            value.getClass().getName(), localVariable.name(), value));
                 }
             }
             writer.append("</program_point>\n");
@@ -197,8 +195,7 @@ public class Tracer implements AutoCloseable {
         if (event.location().toString().contains(
                 debugClass + ":" + breakPointLines[breakPointLines.length - 1])) {
             StepRequest stepRequest = vm.eventRequestManager().createStepRequest(event.thread(),
-                                                                                 StepRequest.STEP_LINE,
-                                                                                 StepRequest.STEP_OVER);
+                    StepRequest.STEP_LINE, StepRequest.STEP_OVER);
             stepRequest.enable();
         }
     }
