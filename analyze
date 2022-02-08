@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if [ -z $@ ]
+if [ "$#" -lt 1 ]
 then
-    echo "Usage: $0 <directory-containing-Main.class>"
+    echo "Usage: $0 <filename.java>"
 fi
 
 base_dir="$(realpath $(dirname $0))"
@@ -13,31 +13,22 @@ then
     exit 1
 fi
 
-dir="$1"
-if [ ! -d "$dir" ]
+java_file="$1"
+shift 1
+if [ ! -f "$java_file" ]
 then
-    echo "Could not find directory: $dir"
+    echo "Could not find file: $java_file"
     exit 1
 fi
 
-cd $dir
+# Create temp dir, copy solution file to it, compile
+tmpdir="$(mktemp -d)"
+cp "$java_file" "$tmpdir/Main.java"
+cd "$tmpdir"
+echo "Compiling..."
+export LANG=C.UTF-8 # Fix for compiling Japanese code https://stackoverflow.com/a/28478933/8999671
+javac -g Main.java
 
-class_file="Main.class"
-java_file="Main.java"
-if [ ! -f "$class_file" ]
-then
-    if [ -f "$java_file" ]
-    then
-        echo "Compiling: $java_file"
-        javac -g $java_file
-    fi
-
-    if [ ! -f "$java_file" ]
-    then
-        echo "Could not find file: $dir"
-        exit 1
-    fi
-fi
-
-echo "Analyzing $dir/Main.java..."
-"$app_exe" Main main -o "$base_dir/log.csv"
+echo "Analyzing..."
+"$app_exe" Main main $@
+rm -r $tmpdir
