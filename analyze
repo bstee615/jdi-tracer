@@ -26,8 +26,7 @@ tmpdir="$(mktemp -d)"
 cp "$java_file" "$tmpdir/Main.java"
 cd "$tmpdir"
 echo "Compiling..."
-export LANG=C.UTF-8 # Fix for compiling Japanese code https://stackoverflow.com/a/28478933/8999671
-javac -g Main.java
+javac -encoding utf8 -g Main.java # Fix for compiling Japanese code https://stackoverflow.com/a/14672757/8999671
 exitCode="$?"
 if [ "$exitCode" -ne 0 ]
 then
