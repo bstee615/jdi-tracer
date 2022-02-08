@@ -11,8 +11,8 @@ do
     do
         echo "Analyzing $solutionFile"
         solutionFileName="$(basename $solutionFile)"
-        logFileName="logs/$(basename $problemDir)-${solutionFileName%.java}.csv"
-        ./analyze "$solutionFile" -o $(realpath $logFileName) < $inputFile
+        logFilePath="$(realpath logs/$(basename $problemDir)-${solutionFileName%.java}.csv)"
+        time (timeout 30s ./analyze "$solutionFile" -o "$logFilePath" < $inputFile)
         exitCode="$?"
         echo "exitCode=$exitCode for $solutionFile"
     done
