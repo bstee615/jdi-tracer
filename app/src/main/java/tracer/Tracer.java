@@ -191,9 +191,10 @@ public class Tracer implements AutoCloseable {
                     e.printStackTrace();
                     System.out.printf("Exception for variable %s\n", localVariable.name());
                     throw e;
+                } finally {
+                    writer.append("</program_point>\n");
                 }
             }
-            writer.append("</program_point>\n");
         }
     }
 
