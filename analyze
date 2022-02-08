@@ -28,7 +28,15 @@ cd "$tmpdir"
 echo "Compiling..."
 export LANG=C.UTF-8 # Fix for compiling Japanese code https://stackoverflow.com/a/28478933/8999671
 javac -g Main.java
+exitCode="$?"
+if [ "$exitCode" -ne 0 ]
+then
+    exit $exitCode
+fi
 
 echo "Analyzing..."
 "$app_exe" Main main $@
+exitCode="$?"
 rm -r $tmpdir
+
+exit $exitCode
