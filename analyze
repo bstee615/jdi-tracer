@@ -1,0 +1,42 @@
+#!/bin/bash
+
+if [ -z $@ ]
+then
+    echo "Usage: $0 <directory-containing-Main.class>"
+fi
+
+base_dir="$(realpath $(dirname $0))"
+app_exe="$base_dir/app/build/install/app/bin/app"
+if [ ! -f "$app_exe" ]
+then
+    echo "Could not find app executable: $app_exe"
+    exit 1
+fi
+
+dir="$1"
+if [ ! -d "$dir" ]
+then
+    echo "Could not find directory: $dir"
+    exit 1
+fi
+
+cd $dir
+
+class_file="Main.class"
+java_file="Main.java"
+if [ ! -f "$class_file" ]
+then
+    if [ -f "$java_file" ]
+    then
+        echo "Compiling: $java_file"
+        javac -g $java_file
+    fi
+
+    if [ ! -f "$java_file" ]
+    then
+        echo "Could not find file: $dir"
+        exit 1
+    fi
+fi
+
+"$app_exe" Main main
