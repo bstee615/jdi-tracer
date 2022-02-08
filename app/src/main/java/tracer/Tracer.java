@@ -25,6 +25,7 @@ import com.sun.jdi.request.StepRequest;
 import com.sun.jdi.request.EventRequestManager;
 import com.sun.jdi.VirtualMachineManager;
 import com.sun.jdi.Method;
+
 import java.util.function.Consumer;
 import java.util.List;
 import java.util.Map;
@@ -46,23 +47,28 @@ public class Tracer implements AutoCloseable {
     StreamRedirector inOut;
     StreamRedirector outIn;
 
-    public Tracer(String className, String methodName) throws Exception
-    {
+    /**
+     * Construct a Tracer targeting a certain class and method by name.
+     * Usually, className = "Main" and methodName = "main".
+     */
+    public Tracer(String className, String methodName) throws Exception {
         initVmEnvironment(className);
         this.methodName = methodName;
         inOut = new StreamRedirector(vm.process().getOutputStream());
         outIn = new StreamRedirector(vm.process().getInputStream());
     }
 
-    public void initVmEnvironment(String className) throws Exception
-    {
+    /**
+     * Initialize the debug VM.
+     */
+    public void initVmEnvironment(String className) throws Exception {
         // init VirtualMachine
         VirtualMachineManager vmm = Bootstrap.virtualMachineManager();
         LaunchingConnector lc = vmm.defaultConnector();
         Map<String, Connector.Argument> env = lc.defaultArguments();
         env.get("main").setValue(className);
         vm = lc.launch(env);
-        
+
         // init EventRequestManager
         erm = vm.eventRequestManager();
         ClassPrepareRequest r = erm.createClassPrepareRequest();
@@ -70,52 +76,62 @@ public class Tracer implements AutoCloseable {
         r.enable();
     }
 
+    /**
+     * Set the name of the class for which we will request a breakpoint.
+     */
     public void setDebugClassName(String debugClass) {
         this.debugClass = debugClass;
     }
 
+    /**
+     * Set the line numbers on which we will request a breakpoint.
+     */
     public void setBreakPointLines(int[] breakPointLines) {
         this.breakPointLines = breakPointLines;
     }
 
-    public EventSet popEventSet() throws InterruptedException
-    {
+    /**
+     * Get an EventSet from the VM.
+     * If it returns null, then it timed out waiting for an EventSet.
+     */
+    public EventSet popEventSet() throws InterruptedException {
         EventSet set = vm.eventQueue().remove(60 * 1000);
-        if (set == null)
-        {
+        if (set == null) {
             System.out.println("Timed out waiting for EventSet");
         }
         return set;
     }
 
-    public void close() throws Exception
-    {
+    /**
+     * Close this resource, closing down input redirection threads.
+     * @throws Exception
+     */
+    public void close() throws Exception {
         this.inOut.close();
         this.outIn.close();
     }
 
     /**
-     * Handle a single event
+     * Handle a single event from the VM.
      */
-    public void handleEvent(Event event) throws Exception
-    {
+    public void handleEvent(Event event) throws Exception {
         // first called
         if (event instanceof ClassPrepareEvent) {
-            ClassPrepareEvent evt = (ClassPrepareEvent)event;
+            ClassPrepareEvent evt = (ClassPrepareEvent) event;
             setBreakpoint(evt);
         }
 
         // second called
         if (event instanceof BreakpointEvent) {
             event.request().disable();
-            BreakpointEvent evt = (BreakpointEvent)event;
+            BreakpointEvent evt = (BreakpointEvent) event;
             displayVariables(evt);
             enableStepRequest(evt);
         }
 
         // third called over and over
         if (event instanceof StepEvent) {
-            StepEvent evt = (StepEvent)event;
+            StepEvent evt = (StepEvent) event;
             displayVariables(evt);
         }
 
@@ -124,11 +140,13 @@ public class Tracer implements AutoCloseable {
 
     /* debugger actions */
 
-    public void setBreakpoint(ClassPrepareEvent event)throws Exception
-    {
+    /**
+     * Set a breakpoint on the first line of method methodName.
+     */
+    public void setBreakpoint(ClassPrepareEvent event) throws Exception {
         ClassType classType = (ClassType) event.referenceType();
         setDebugClassName(classType.name());
-        
+
         // Set breakpoint on method by name
         classType.methodsByName(methodName).forEach(new Consumer<Method>() {
             @Override
@@ -149,16 +167,13 @@ public class Tracer implements AutoCloseable {
     }
 
     /**
-     * Displays the visible variables
-     * @param event
-     * @throws IncompatibleThreadStateException
-     * @throws AbsentInformationException
+     * Displays the visible variables at the current program point.
      */
     public void displayVariables(LocatableEvent event) throws IOException, AbsentInformationException, IncompatibleThreadStateException {
         StackFrame stackFrame = event.thread().frame(0);
-        if(stackFrame.location().toString().contains(debugClass)) {
+        if (stackFrame.location().toString().contains(debugClass)) {
             Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(stackFrame.visibleVariables());
-            System.out.println("Variables at " +stackFrame.location().toString());
+            System.out.println("Variables at " + stackFrame.location().toString());
             for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
                 System.out.println(entry.getKey().name() + " = " + entry.getValue());
             }
@@ -166,15 +181,13 @@ public class Tracer implements AutoCloseable {
     }
 
     /**
-     * Enables step request for a break point
-     * @param vm
-     * @param event
+     * Requests to step forward from a breakpoint.
      */
     public void enableStepRequest(BreakpointEvent event) {
         //enable step request for last break point
-        if(event.location().toString().contains(debugClass+":"+breakPointLines[breakPointLines.length-1])) {
+        if (event.location().toString().contains(debugClass + ":" + breakPointLines[breakPointLines.length - 1])) {
             StepRequest stepRequest = vm.eventRequestManager().createStepRequest(event.thread(), StepRequest.STEP_LINE, StepRequest.STEP_OVER);
-            stepRequest.enable();    
+            stepRequest.enable();
         }
     }
 }
