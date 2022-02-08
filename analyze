@@ -39,4 +39,5 @@ then
     fi
 fi
 
+echo "Analyzing $dir/Main.java..."
 "$app_exe" Main main

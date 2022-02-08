@@ -24,7 +24,7 @@ public class App {
                 }
             }
         } catch (VMDisconnectedException e) {
-            System.out.println("Virtual Machine is disconnected.");
+            System.out.println("Done.");
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -9,6 +9,9 @@ import com.sun.jdi.request.ClassPrepareRequest;
 import com.sun.jdi.request.EventRequestManager;
 import com.sun.jdi.request.StepRequest;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +28,7 @@ public class Tracer implements AutoCloseable {
     EventRequestManager erm;
     StreamRedirector inOut;
     StreamRedirector outIn;
+    BufferedWriter writer;
 
     /**
      * Construct a Tracer targeting a certain class and method by name.
@@ -33,8 +37,10 @@ public class Tracer implements AutoCloseable {
     public Tracer(String className, String methodName) throws Exception {
         initVmEnvironment(className);
         this.methodName = methodName;
-        inOut = new StreamRedirector(vm.process().getOutputStream());
-        outIn = new StreamRedirector(vm.process().getInputStream());
+        writer = new BufferedWriter(new FileWriter("log.xml"));
+        inOut = new StreamRedirector(writer, vm.process().getOutputStream());
+        outIn = new StreamRedirector(writer, vm.process().getInputStream());
+        writer.append("<trace>\n");
     }
 
     /**
@@ -74,19 +80,17 @@ public class Tracer implements AutoCloseable {
      * If it returns null, then it timed out waiting for an EventSet.
      */
     public EventSet popEventSet() throws InterruptedException {
-        EventSet set = vm.eventQueue().remove(60 * 1000);
-        if (set == null) {
-            System.out.println("Timed out waiting for EventSet");
-        }
-        return set;
+        return vm.eventQueue().remove();
     }
 
     /**
      * Close this resource, closing down input redirection threads.
      */
     public void close() throws Exception {
-        this.inOut.close();
-        this.outIn.close();
+        writer.append("</trace>\n");
+        writer.close();
+        inOut.close();
+        outIn.close();
     }
 
     /**
@@ -145,14 +149,33 @@ public class Tracer implements AutoCloseable {
     /**
      * Displays the visible variables at the current program point.
      */
-    public void displayVariables(LocatableEvent event) throws AbsentInformationException, IncompatibleThreadStateException {
+    public void displayVariables(LocatableEvent event) throws Exception {
         StackFrame stackFrame = event.thread().frame(0);
         if (stackFrame.location().toString().contains(debugClass)) {
             Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(stackFrame.visibleVariables());
-            System.out.println("Variables at " + stackFrame.location().toString());
+            writer.append(String.format("<program_point location=\"%s\">\n", stackFrame.location().toString()));
             for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
-                System.out.println(entry.getKey().name() + " = " + entry.getValue());
+                LocalVariable localVariable = entry.getKey();
+                Value value = entry.getValue();
+                if (value instanceof ArrayReference) {
+                    ArrayReference arr = ((ArrayReference) value);
+                    writer.append(String.format("<variable type=\"%s\" name=\"%s\">%s</variable>\n",
+                            arr.getClass().getName(), localVariable.name(),
+                            arr.getValues().toString()));
+                } else if (value instanceof ObjectReference) {
+                    // https://stackoverflow.com/a/59012879/8999671
+                    ObjectReference objectReference = ((ObjectReference) value);
+                    Method toStringMethod = objectReference.referenceType().methodsByName("toString").get(0);
+                    String valueString = objectReference.invokeMethod(event.thread(), toStringMethod,
+                            Collections.emptyList(), ObjectReference.INVOKE_SINGLE_THREADED).toString();
+                    writer.append(String.format("<variable type=\"%s\" name=\"%s\">%s</variable>\n",
+                            objectReference.referenceType().name(), localVariable.name(), valueString));
+                } else {
+                    writer.append(String.format("<variable type=\"%s\" name=\"%s\">%s</variable>\n", value.getClass().getName(), localVariable.name(),
+                            value));
+                }
             }
+            writer.append("</program_point>\n");
         }
     }
 
