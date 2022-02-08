@@ -11,12 +11,21 @@ public class App {
             return;
         }
 
+        String outputFileName = "log.xml";
+        for (int i = 0; i < args.length; i ++) {
+            if (args[i].equals("-o")) {
+                assert i < args.length - 1;
+                outputFileName = args[i+1];
+                assert outputFileName.endsWith(".xml");
+            }
+        }
+
         String classPattern = args[0];
         String methodName = args[1];
 
         System.out.printf("Analyzing %s.%s()\n", classPattern, methodName);
 
-        try (Tracer debuggerInstance = new Tracer(classPattern, methodName)) {
+        try (Tracer debuggerInstance = new Tracer(outputFileName, classPattern, methodName)) {
             EventSet eventSet;
             while ((eventSet = debuggerInstance.popEventSet()) != null) {
                 for (Event event : eventSet) {

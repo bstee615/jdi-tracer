@@ -34,10 +34,10 @@ public class Tracer implements AutoCloseable {
      * Construct a Tracer targeting a certain class and method by name.
      * Usually, className = "Main" and methodName = "main".
      */
-    public Tracer(String className, String methodName) throws Exception {
+    public Tracer(String logFileName, String className, String methodName) throws Exception {
         initVmEnvironment(className);
         this.methodName = methodName;
-        writer = new BufferedWriter(new FileWriter("log.xml"));
+        writer = new BufferedWriter(new FileWriter(logFileName));
         inOut = new StreamRedirector(writer, vm.process().getOutputStream());
         outIn = new StreamRedirector(writer, vm.process().getInputStream());
         writer.append("<trace>\n");

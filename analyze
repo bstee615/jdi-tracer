@@ -40,4 +40,4 @@ then
 fi
 
 echo "Analyzing $dir/Main.java..."
-"$app_exe" Main main
+"$app_exe" Main main -o "$base_dir/log.csv"
