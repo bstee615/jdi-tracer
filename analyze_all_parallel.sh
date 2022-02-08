@@ -19,12 +19,13 @@ echo_var() {
 }
 export -f echo_var
 
+rm output.txt
+
 for problemDir in mini_Project_CodeNet/p*
 do
     problemName="$(basename $problemDir)"
-    echo "Analyzing $problemDir"
+    echo "***analyzing problem*** $problemDir"
     inputFile="$(realpath ../Project_CodeNet/derived/input_output/data/$problemName/input.txt)"
     # https://stackoverflow.com/a/50351932/8999671
-    ls $problemDir/Java/s*.java | parallel --group -I% --max-args 1 -P 10 echo_var % $inputFile {}
-    break
+    ls $problemDir/Java/s*.java | parallel --group -I% --max-args 1 -P 6 echo_var % $inputFile {} &>> output.txt
 done
