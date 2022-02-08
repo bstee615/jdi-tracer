@@ -6,8 +6,10 @@ mini_sample/*
 # Ignore Gradle build output directory
 build
 gradle-7.3.3*
-/output.txt
-/log.csv
+
 /logs/
 /mini_Project_CodeNet/
-log.xml
+
+/*.txt
+/*.csv
+/*.xml

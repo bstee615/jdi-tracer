@@ -13,5 +13,7 @@ do
         solutionFileName="$(basename $solutionFile)"
         logFileName="logs/$(basename $problemDir)-${solutionFileName%.java}.csv"
         ./analyze "$solutionFile" -o $(realpath $logFileName) < $inputFile
+        exitCode="$?"
+        echo "exitCode=$exitCode for $solutionFile"
     done
 done
