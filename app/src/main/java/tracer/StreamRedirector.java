@@ -44,9 +44,11 @@ public class StreamRedirector implements AutoCloseable {
      *
      * @param input        Input stream to wait for.
      * @param output       Output stream to redirect to.
-     * @param waitForInput Whether to wait indefinitely when input is done, or close the thread immediately.
+     * @param waitForInput Whether to wait indefinitely when input is done, or close the thread
+     *                     immediately.
      */
-    void redirectOnLoop(InputStream input, OutputStream output, boolean waitForInput, boolean logOutput) {
+    void redirectOnLoop(InputStream input, OutputStream output, boolean waitForInput,
+            boolean logOutput) {
         byte[] buf = new byte[1024];
         try {
             // query input on a loop
