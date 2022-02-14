@@ -9,8 +9,7 @@ import com.sun.jdi.request.ClassPrepareRequest;
 import com.sun.jdi.request.EventRequestManager;
 import com.sun.jdi.request.StepRequest;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
+import java.io.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -26,20 +25,21 @@ public class Tracer implements AutoCloseable {
 
     VirtualMachine vm;
     EventRequestManager erm;
-    StreamRedirector inOut;
-    StreamRedirector outIn;
     BufferedWriter writer;
+
+    StreamRedirector inputRedirector;
+    StreamRedirector outputRedirector;
 
     /**
      * Construct a Tracer targeting a certain class and method by name.
      * Usually, className = "Main" and methodName = "main".
      */
-    public Tracer(String logFileName, String className, String methodName) throws Exception {
+    public Tracer(String logFileName, String outputFileName, String className, String methodName) throws Exception {
         initVmEnvironment(className);
         this.methodName = methodName;
         writer = new BufferedWriter(new FileWriter(logFileName));
-        inOut = new StreamRedirector(writer, vm.process().getOutputStream());
-        outIn = new StreamRedirector(writer, vm.process().getInputStream());
+        inputRedirector = new StreamRedirector(vm.process().getInputStream(), new FileOutputStream(outputFileName));
+        outputRedirector = new StreamRedirector(System.in, vm.process().getOutputStream());
         writer.append("<trace>\n");
     }
 
@@ -89,8 +89,8 @@ public class Tracer implements AutoCloseable {
     public void close() throws Exception {
         writer.append("</trace>\n");
         writer.close();
-        inOut.close();
-        outIn.close();
+        inputRedirector.close();
+        outputRedirector.close();
     }
 
     /**
@@ -154,8 +154,8 @@ public class Tracer implements AutoCloseable {
         if (stackFrame.location().toString().contains(debugClass)) {
             Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(
                     stackFrame.visibleVariables());
-            writer.append(String.format("<program_point location=\"%s\">\n",
-                    stackFrame.location().toString()));
+            writer.append(String.format("<program_point filename=\"%s\" line=\"%s\">\n",
+                    stackFrame.location().sourcePath(), stackFrame.location().lineNumber()));
             try {
                 for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
                     LocalVariable localVariable = entry.getKey();

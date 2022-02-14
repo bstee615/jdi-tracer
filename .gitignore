@@ -8,8 +8,10 @@ build
 gradle-7.3.3*
 
 /logs/
+/outputs/
 /mini_Project_CodeNet/
 
 /*.txt
 /*.csv
 /*.xml
+/*.json

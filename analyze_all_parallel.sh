@@ -1,6 +1,9 @@
 #!/bin/bash
 
-mkdir -p logs
+trap "echo Analysis interrupted!; exit;" SIGINT SIGTERM
+
+mkdir -p logs outputs
+rm -f output.txt
 
 echo_var() {
     solutionFile="$1"
@@ -8,20 +11,28 @@ echo_var() {
     inputFile="$2"
     # echo "Analyzing $solutionFile"
     solutionFileName="$(basename $solutionFile)"
-    logFilePath="$(realpath logs/$(basename $problemDir)-${solutionFileName%.java}.csv)"
+    run_id="java_$(basename $problemDir)_${solutionFileName%.java}"
+    logFilePath="$(realpath logs/$run_id.xml)"
+    outputFilePath="$(realpath outputs/$run_id.txt)"
     echo "***analyzing*** $solutionFile"
     time (
-        timeout 30s ./analyze "$solutionFile" -o "$logFilePath" 2>&1 < $inputFile;
+        begin="$(date +%s.%3N)"
+        echo "$run_id begin: $begin seconds"
+
+        timeout 10s ./analyze "$solutionFile" -l "$logFilePath" -o "$outputFilePath" 2>&1 < $inputFile;
         exitCode="$?";
-        echo "***exitCode=$exitCode*** $solutionFile";
+        echo "$run_id exit code: $exitCode";
+        
+        end="$(date +%s.%3N)"
+        echo "$run_id end: $end seconds"
+        elapsed="$(echo "scale=3; $end - $begin" | bc)"
+        echo "$run_id elapsed: $elapsed seconds"
     )
     return 0
 }
 export -f echo_var
 
-rm output.txt
-
-for problemDir in mini_Project_CodeNet/p*
+for problemDir in ../Project_CodeNet/mini/p*
 do
     problemName="$(basename $problemDir)"
     echo "***analyzing problem*** $problemDir"

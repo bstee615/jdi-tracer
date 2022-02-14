@@ -11,12 +11,19 @@ public class App {
             return;
         }
 
-        String outputFileName = "log.xml";
+
+        String logFileName = "log.xml";
+        String outputFileName = "log.txt";
         for (int i = 0; i < args.length; i++) {
+            if (args[i].equals("-l")) {
+                assert i < args.length - 1;
+                logFileName = args[i + 1];
+                assert logFileName.endsWith(".xml");
+            }
             if (args[i].equals("-o")) {
                 assert i < args.length - 1;
                 outputFileName = args[i + 1];
-                assert outputFileName.endsWith(".xml");
+                assert outputFileName.endsWith(".txt");
             }
         }
 
@@ -25,7 +32,7 @@ public class App {
 
         System.out.printf("Analyzing %s.%s()\n", classPattern, methodName);
 
-        try (Tracer debuggerInstance = new Tracer(outputFileName, classPattern, methodName)) {
+        try (Tracer debuggerInstance = new Tracer(logFileName, outputFileName, classPattern, methodName)) {
             EventSet eventSet;
             while ((eventSet = debuggerInstance.popEventSet()) != null) {
                 for (Event event : eventSet) {

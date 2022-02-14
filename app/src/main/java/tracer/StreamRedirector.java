@@ -15,27 +15,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class StreamRedirector implements AutoCloseable {
     private final Thread thread;
-    private final BufferedWriter logWriter;
 
     private final AtomicBoolean isRunning = new AtomicBoolean(true);
 
     /**
      * Redirect from System.in to output (target program stdin).
      */
-    public StreamRedirector(BufferedWriter logWriter, OutputStream output) {
-        this.logWriter = logWriter;
-        InputStream input = System.in;
-        thread = new Thread(() -> redirectOnLoop(input, output, false, false));
-        thread.start();
-    }
-
-    /**
-     * Redirect from input (target program stdout) to System.out.
-     */
-    public StreamRedirector(BufferedWriter logWriter, InputStream input) {
-        this.logWriter = logWriter;
-        OutputStream output = System.out;
-        thread = new Thread(() -> redirectOnLoop(input, output, true, true));
+    public StreamRedirector(InputStream input, OutputStream output) {
+        thread = new Thread(() -> redirectOnLoop(input, output));
         thread.start();
     }
 
@@ -47,14 +34,13 @@ public class StreamRedirector implements AutoCloseable {
      * @param waitForInput Whether to wait indefinitely when input is done, or close the thread
      *                     immediately.
      */
-    void redirectOnLoop(InputStream input, OutputStream output, boolean waitForInput,
-            boolean logOutput) {
+    void redirectOnLoop(InputStream input, OutputStream output) {
         byte[] buf = new byte[1024];
         try {
             // query input on a loop
             while (isRunning.get()) {
                 if (input.available() == 0) {
-                    if (waitForInput) {
+                    if (input != System.in) {
                         continue;
                     } else {
                         break;
@@ -64,10 +50,6 @@ public class StreamRedirector implements AutoCloseable {
                 if ((n = input.read(buf)) > -1) {
                     byte[] slice = Arrays.copyOfRange(buf, 0, n);
                     output.write(slice);
-                    if (logOutput) {
-                        String sliceStr = new String(slice);
-                        logWriter.write(String.format("<stdout>%s</stdout>\n", sliceStr));
-                    }
                     output.flush();
                 }
             }
