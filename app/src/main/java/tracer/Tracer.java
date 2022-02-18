@@ -172,17 +172,29 @@ public class Tracer implements AutoCloseable {
                             // Method callMethod gets its ThreadReference from the event in this
                             // example.
                             // https://github.com/SpoonLabs/nopol/blob/master/nopol/src/main/java/fr/inria/lille/repair/synthesis/collect/DynamothDataCollector.java#L428
+                            String proxy;
+                            String valueString;
+
                             ObjectReference objectReference = ((ObjectReference) value);
-                            Method toStringMethod = objectReference.referenceType().methodsByName(
-                                    "toString", "()Ljava/lang/String;").get(0);
-                            String valueString = objectReference.invokeMethod(event.thread(),
-                                    toStringMethod, Collections.emptyList(),
-                                    ObjectReference.INVOKE_SINGLE_THREADED).toString();
+                            // TODO: Do direct type comparison instead of string comparison
+                            if (objectReference.referenceType().name().equals("java.util.Scanner")) {
+                                proxy = "objectReference.getClass().getName()";
+                                valueString = objectReference.referenceType().name();
+                            }
+                            else {
+                                Method toStringMethod = objectReference.referenceType().methodsByName(
+                                        "toString", "()Ljava/lang/String;").get(0);
+                                proxy = toStringMethod.toString();
+                                valueString = objectReference.invokeMethod(event.thread(),
+                                        toStringMethod, Collections.emptyList(),
+                                        ObjectReference.INVOKE_SINGLE_THREADED).toString();
+                            }
+
                             writer.append(String.format(
                                     "<variable type=\"%s\" name=\"%s\" " +
                                             "proxy=\"%s\">%s</variable>\n",
                                     objectReference.referenceType().name(), localVariable.name(),
-                                    toStringMethod.toString(), valueString));
+                                    proxy, valueString));
                         } else {
                             writer.append(String.format(
                                     "<variable type=\"%s\" name=\"%s\">%s</variable>\n",
