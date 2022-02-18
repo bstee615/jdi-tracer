@@ -4,26 +4,31 @@ import com.sun.jdi.event.Event;
 import com.sun.jdi.event.EventSet;
 import com.sun.jdi.VMDisconnectedException;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+
 public class App {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws FileNotFoundException {
         if (args.length < 2) {
             System.out.println("Usage: App.java <classPattern> <methodName>");
             return;
         }
 
-
-        String logFileName = "log.xml";
-        String outputFileName = "log.txt";
+        OutputStream traceStream = System.out;
+        OutputStream logStream = System.out;
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("-l")) {
                 assert i < args.length - 1;
-                logFileName = args[i + 1];
-                assert logFileName.endsWith(".xml");
+                String traceFileName = args[i + 1];
+                assert traceFileName.endsWith(".xml");
+
             }
             if (args[i].equals("-o")) {
                 assert i < args.length - 1;
-                outputFileName = args[i + 1];
-                assert outputFileName.endsWith(".txt");
+                String logFileName = args[i + 1];
+                assert logFileName.endsWith(".txt");
+                logStream = new FileOutputStream(logFileName);
             }
         }
 
@@ -32,7 +37,7 @@ public class App {
 
         System.out.printf("Analyzing %s.%s()\n", classPattern, methodName);
 
-        try (Tracer debuggerInstance = new Tracer(logFileName, outputFileName, classPattern, methodName)) {
+        try (Tracer debuggerInstance = new Tracer(traceStream, logStream, classPattern, methodName)) {
             EventSet eventSet;
             while ((eventSet = debuggerInstance.popEventSet()) != null) {
                 for (Event event : eventSet) {

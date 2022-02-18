@@ -25,7 +25,7 @@ public class Tracer implements AutoCloseable {
 
     VirtualMachine vm;
     EventRequestManager erm;
-    BufferedWriter writer;
+    BufferedWriter traceWriter;
 
     StreamRedirector inputRedirector;
     StreamRedirector outputRedirector;
@@ -34,13 +34,13 @@ public class Tracer implements AutoCloseable {
      * Construct a Tracer targeting a certain class and method by name.
      * Usually, className = "Main" and methodName = "main".
      */
-    public Tracer(String logFileName, String outputFileName, String className, String methodName) throws Exception {
+    public Tracer(OutputStream trace, OutputStream log, String className, String methodName) throws Exception {
         initVmEnvironment(className);
         this.methodName = methodName;
-        writer = new BufferedWriter(new FileWriter(logFileName));
-        inputRedirector = new StreamRedirector(vm.process().getInputStream(), new FileOutputStream(outputFileName));
+        traceWriter = new BufferedWriter(new OutputStreamWriter(trace));
+        inputRedirector = new StreamRedirector(vm.process().getInputStream(), log);
         outputRedirector = new StreamRedirector(System.in, vm.process().getOutputStream());
-        writer.append("<trace>\n");
+        traceWriter.append("<trace>\n");
     }
 
     /**
@@ -87,8 +87,8 @@ public class Tracer implements AutoCloseable {
      * Close this resource, closing down input redirection threads.
      */
     public void close() throws Exception {
-        writer.append("</trace>\n");
-        writer.close();
+        traceWriter.append("</trace>\n");
+        traceWriter.close();
         inputRedirector.close();
         outputRedirector.close();
     }
@@ -154,7 +154,7 @@ public class Tracer implements AutoCloseable {
         if (stackFrame.location().toString().contains(debugClass)) {
             Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(
                     stackFrame.visibleVariables());
-            writer.append(String.format("<program_point filename=\"%s\" line=\"%s\">\n",
+            traceWriter.append(String.format("<program_point filename=\"%s\" line=\"%s\">\n",
                     stackFrame.location().sourcePath(), stackFrame.location().lineNumber()));
             try {
                 for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
@@ -163,7 +163,7 @@ public class Tracer implements AutoCloseable {
                     try {
                         if (value instanceof ArrayReference) {
                             ArrayReference arr = ((ArrayReference) value);
-                            writer.append(String.format(
+                            traceWriter.append(String.format(
                                     "<variable type=\"%s\" name=\"%s\">%s</variable>\n",
                                     arr.getClass().getName(), localVariable.name(),
                                     arr.getValues().toString()));
@@ -190,13 +190,13 @@ public class Tracer implements AutoCloseable {
                                         ObjectReference.INVOKE_SINGLE_THREADED).toString();
                             }
 
-                            writer.append(String.format(
+                            traceWriter.append(String.format(
                                     "<variable type=\"%s\" name=\"%s\" " +
                                             "proxy=\"%s\">%s</variable>\n",
                                     objectReference.referenceType().name(), localVariable.name(),
                                     proxy, valueString));
                         } else {
-                            writer.append(String.format(
+                            traceWriter.append(String.format(
                                     "<variable type=\"%s\" name=\"%s\">%s</variable>\n",
                                     (value == null) ? null : value.getClass().getName(),
                                     localVariable.name(), value));
@@ -208,7 +208,7 @@ public class Tracer implements AutoCloseable {
                     }
                 }
             } finally {
-                writer.append("</program_point>\n");
+                traceWriter.append("</program_point>\n");
             }
         }
     }
