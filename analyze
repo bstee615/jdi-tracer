@@ -57,15 +57,16 @@ if [ ! -z "$infer_output_files" ]
 then
     problem="$(basename $(dirname $(dirname $src_file)))"
     solution="$(basename ${src_file%.java})"
-    [ -n "$verbose" ] && echo "problem=$problem solution=$solution"
+    [ "$verbose" == "1" ] && echo "problem=$problem solution=$solution"
     run_id="java_${problem}_${solution}"
     trace_arg="-l $starting_cwd/logs/$run_id.xml"
     output_arg="-o $starting_cwd/outputs/$run_id.txt"
     mkdir -p "$starting_cwd/logs" "$starting_cwd/outputs"
 fi
 
+[ "$verbose" == "1" ] && verbose_arg="-v"
 [ "$verbose" == "1" ] && (echo "Analyzing..."; echo "command=$app_exe Main main $trace_arg $output_arg")
-"$app_exe" Main main $trace_arg $output_arg
+"$app_exe" Main main $trace_arg $output_arg $verbose_arg
 exitCode="$?"
 rm -r $tmpdir
 

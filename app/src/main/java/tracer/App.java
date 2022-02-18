@@ -17,25 +17,31 @@ public class App {
 
         OutputStream traceStream = System.out;
         OutputStream logStream = System.out;
+        boolean verbose = false;
         for (int i = 0; i < args.length; i++) {
-            if (args[i].equals("-l")) {
-                assert i < args.length - 1;
-                String traceFileName = args[i + 1];
-                assert traceFileName.endsWith(".xml");
-                traceStream = new FileOutputStream(traceFileName);
-            }
-            if (args[i].equals("-o")) {
-                assert i < args.length - 1;
-                String logFileName = args[i + 1];
-                assert logFileName.endsWith(".txt");
-                logStream = new FileOutputStream(logFileName);
+            switch (args[i]) {
+                case "-l":
+                    assert i < args.length - 1;
+                    String traceFileName = args[i + 1];
+                    assert traceFileName.endsWith(".xml");
+                    traceStream = new FileOutputStream(traceFileName);
+                    break;
+                case "-o":
+                    assert i < args.length - 1;
+                    String logFileName = args[i + 1];
+                    assert logFileName.endsWith(".txt");
+                    logStream = new FileOutputStream(logFileName);
+                    break;
+                case "-v":
+                    verbose = true;
+                    break;
             }
         }
 
         String classPattern = args[0];
         String methodName = args[1];
 
-        System.out.printf("Analyzing %s.%s()\n", classPattern, methodName);
+        if (verbose) System.out.printf("Analyzing %s.%s()\n", classPattern, methodName);
 
         try (Tracer debuggerInstance = new Tracer(traceStream, logStream, classPattern, methodName)) {
             EventSet eventSet;
@@ -45,7 +51,7 @@ public class App {
                 }
             }
         } catch (VMDisconnectedException e) {
-            System.out.println("Done.");
+            if (verbose) System.out.println("Done.");
         } catch (Exception e) {
             e.printStackTrace();
         }
