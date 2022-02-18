@@ -22,7 +22,7 @@ public class App {
                 assert i < args.length - 1;
                 String traceFileName = args[i + 1];
                 assert traceFileName.endsWith(".xml");
-
+                traceStream = new FileOutputStream(traceFileName);
             }
             if (args[i].equals("-o")) {
                 assert i < args.length - 1;
