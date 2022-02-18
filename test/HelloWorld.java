@@ -11,9 +11,11 @@ public class HelloWorld {
  
 		String welcome = "Welcome to Its All Binary !";
  
-		String greeting = helloWorld + welcome;
- 
-		System.out.println("Hi Everyone, " + greeting);// Put a break point at this line.
+		for (int i = 0; i < 10; i ++) {
+			String greeting = helloWorld + welcome + i;
+
+			System.out.println("Hi Everyone, " + greeting);// Put a break point at this line.	
+		}
  
 	}
  
