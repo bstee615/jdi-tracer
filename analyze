@@ -1,11 +1,30 @@
 #!/bin/bash
 
-if [ "$#" -lt 1 ]
+if [ "$#" -lt 2 ]
 then
-    echo "Usage: $0 <filename.java>"
+    echo "Usage: $0 <filename.java> <input.txt> [--infer_output_files] [-v for verbose]"
+    exit 1
 fi
 
-base_dir="$(realpath $(dirname $0))"
+src_file="$(realpath $1)"
+input_file="$(realpath $2)"
+if [ "$3" == "--infer_output_files" ]
+then
+    infer_output_files="1"
+else
+    infer_output_files="0"
+fi
+if [ "$4" == "-v" ]
+then
+    verbose="1"
+else
+    verbose="0"
+fi
+
+[ "$verbose" == "1" ] && echo "Args: $@"
+
+starting_cwd="$(pwd)"
+base_dir="$(dirname $(realpath $0))"
 app_exe="$base_dir/app/build/install/app/bin/app"
 if [ ! -f "$app_exe" ]
 then
@@ -25,7 +44,7 @@ fi
 tmpdir="$(mktemp -d)"
 cp "$java_file" "$tmpdir/Main.java"
 cd "$tmpdir"
-echo "Compiling..."
+[ "$verbose" == "1" ] && echo "Compiling..."
 javac -encoding utf8 -g Main.java # Fix for compiling Japanese code https://stackoverflow.com/a/14672757/8999671
 exitCode="$?"
 if [ "$exitCode" -ne 0 ]
@@ -33,8 +52,20 @@ then
     exit $exitCode
 fi
 
-echo "Analyzing..."
-"$app_exe" Main main $@
+# Infer output and trace files
+if [ ! -z "$infer_output_files" ]
+then
+    problem="$(basename $(dirname $(dirname $src_file)))"
+    solution="$(basename ${src_file%.java})"
+    [ -n "$verbose" ] && echo "problem=$problem solution=$solution"
+    run_id="java_${problem}_${solution}"
+    trace_arg="-l $starting_cwd/logs/$run_id.xml"
+    output_arg="-o $starting_cwd/outputs/$run_id.txt"
+    mkdir -p "$starting_cwd/logs" "$starting_cwd/outputs"
+fi
+
+[ "$verbose" == "1" ] && (echo "Analyzing..."; echo "command=$app_exe Main main $trace_arg $output_arg")
+"$app_exe" Main main $trace_arg $output_arg
 exitCode="$?"
 rm -r $tmpdir
 
