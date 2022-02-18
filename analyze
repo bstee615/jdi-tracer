@@ -67,12 +67,12 @@ fi
 [ "$verbose" == "1" ] && verbose_arg="-v"
 [ "$verbose" == "1" ] && (echo "Analyzing..."; echo "command=$app_exe Main main $trace_arg $output_arg")
 
-start="$(date +%s)"
+start="$(date +%s.%3N)"
 [ "$verbose" == "1" ] && echo "$run_id begin: $start"
 timeout 10s "$app_exe" Main main $trace_arg $output_arg $verbose_arg < $input_file
 exit_code="$?"
-end="$(date +%s)"
-elapsed="$(echo "$end - $start" | bc)"
+end="$(date +%s.%3N)"
+elapsed="$(echo "scale=3; $end - $start" | bc)"
 [ "$verbose" == "1" ] && (echo  "$run_id end: $end"; echo "$run_id elapsed seconds: $elapsed")
 [ "$verbose" == "1" ] && echo "$run_id exit code: $exit_code"
 
