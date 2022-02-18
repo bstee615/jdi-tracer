@@ -11,6 +11,7 @@ import com.sun.jdi.request.StepRequest;
 
 import java.io.*;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +31,8 @@ public class Tracer implements AutoCloseable {
     StreamRedirector inputRedirector;
     StreamRedirector outputRedirector;
 
+    HashMap<Location, HashMap<String, String>> framesToVariableValues;
+
     /**
      * Construct a Tracer targeting a certain class and method by name.
      * Usually, className = "Main" and methodName = "main".
@@ -41,6 +44,8 @@ public class Tracer implements AutoCloseable {
         inputRedirector = new StreamRedirector(vm.process().getInputStream(), log);
         outputRedirector = new StreamRedirector(System.in, vm.process().getOutputStream());
         traceWriter.append("<trace>\n");
+
+        framesToVariableValues = new HashMap<>();
     }
 
     /**
@@ -151,34 +156,44 @@ public class Tracer implements AutoCloseable {
      */
     public void displayVariables(LocatableEvent event) throws Exception {
         StackFrame stackFrame = event.thread().frame(0);
+        Location frameLocation = stackFrame.location().method().location();
         if (stackFrame.location().toString().contains(debugClass)) {
             Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(
                     stackFrame.visibleVariables());
             traceWriter.append(String.format("<program_point filename=\"%s\" line=\"%s\">\n",
                     stackFrame.location().sourcePath(), stackFrame.location().lineNumber()));
+            if (!framesToVariableValues.containsKey(frameLocation)) {
+                framesToVariableValues.put(frameLocation, new HashMap<>());
+            }
             try {
+                HashMap<String, String> variableMap = framesToVariableValues.get(frameLocation);
+
                 for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
                     LocalVariable localVariable = entry.getKey();
                     Value value = entry.getValue();
+
+                    String proxy = null;
+                    String valueString;
+                    String variableType;
+                    String variableName = localVariable.name();
+
                     try {
                         if (value instanceof ArrayReference) {
                             ArrayReference arr = ((ArrayReference) value);
-                            traceWriter.append(String.format(
-                                    "<variable type=\"%s\" name=\"%s\">%s</variable>\n",
-                                    arr.getClass().getName(), localVariable.name(),
-                                    arr.getValues().toString()));
+                            variableType = arr.getClass().getName();
+                            valueString = arr.getValues().toString();
                         } else if (value instanceof ObjectReference) {
                             // https://stackoverflow.com/a/59012879/8999671
                             // Method callMethod gets its ThreadReference from the event in this
                             // example.
                             // https://github.com/SpoonLabs/nopol/blob/master/nopol/src/main/java/fr/inria/lille/repair/synthesis/collect/DynamothDataCollector.java#L428
-                            String proxy;
-                            String valueString;
 
                             ObjectReference objectReference = ((ObjectReference) value);
+                            variableType = objectReference.referenceType().name();
+
                             // TODO: Do direct type comparison instead of string comparison
                             if (objectReference.referenceType().name().equals("java.util.Scanner")) {
-                                proxy = "objectReference.getClass().getName()";
+                                proxy = "objectReference.referenceType().name()";
                                 valueString = objectReference.referenceType().name();
                             }
                             else {
@@ -189,18 +204,32 @@ public class Tracer implements AutoCloseable {
                                         toStringMethod, Collections.emptyList(),
                                         ObjectReference.INVOKE_SINGLE_THREADED).toString();
                             }
-
-                            traceWriter.append(String.format(
-                                    "<variable type=\"%s\" name=\"%s\" " +
-                                            "proxy=\"%s\">%s</variable>\n",
-                                    objectReference.referenceType().name(), localVariable.name(),
-                                    proxy, valueString));
                         } else {
-                            traceWriter.append(String.format(
-                                    "<variable type=\"%s\" name=\"%s\">%s</variable>\n",
-                                    (value == null) ? null : value.getClass().getName(),
-                                    localVariable.name(), value));
+                            if (value == null) {
+                                variableType = null;
+                                valueString = null;
+                            }
+                            else {
+                                variableType = value.getClass().getName();
+                                valueString = value.toString();
+                            }
                         }
+
+                        String age = "old";
+                        if (!variableMap.containsKey(variableName)) {
+                            age = "new";
+                        }
+                        else if (!variableMap.get(variableName).equals(valueString)) {
+                            age = "modified";
+                        }
+
+                        variableMap.put(variableName, valueString);
+
+                        traceWriter.append(String.format(
+                                "<variable type=\"%s\" age=\"%s\" name=\"%s\" " +
+                                        "proxy=\"%s\">%s</variable>\n",
+                                variableType, age, variableName,
+                                proxy, valueString));
                     } catch (Exception e) {
                         e.printStackTrace();
                         System.out.printf("Exception for variable %s\n", localVariable.name());
