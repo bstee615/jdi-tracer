@@ -41,8 +41,9 @@ fi
 
 problem="$(basename $(dirname $(dirname $src_file)))"
 solution="$(basename ${src_file%.java})"
-[ "$verbose" == "1" ] && echo "problem=$problem solution=$solution"
-run_id="java_${problem}_${solution}"
+input_id="$(basename ${input_file%.txt})"
+[ "$verbose" == "1" ] && echo "problem=$problem solution=$solution input=$input_id"
+run_id="java_${problem}_${solution}_${input_id}"
 
 # Create temp dir, copy solution file to it, compile
 tmpdir="$(mktemp -d)"
@@ -77,6 +78,6 @@ elapsed="$(echo "scale=3; $end - $start" | bc)"
 [ "$verbose" == "1" ] && echo "$run_id exit code: $exit_code"
 
 exitCode="$?"
-rm -r $tmpdir
+rm -rf $tmpdir
 
 exit $exitCode
