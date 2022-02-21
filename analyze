@@ -58,7 +58,7 @@ then
 fi
 
 # Infer output and trace files
-if [ ! -z "$infer_output_files" ]
+if [ "$infer_output_files" == 1 ]
 then
     trace_arg="-l $starting_cwd/logs/$run_id.xml"
     output_arg="-o $starting_cwd/outputs/$run_id.txt"
@@ -70,8 +70,18 @@ fi
 
 start="$(date +%s.%3N)"
 [ "$verbose" == "1" ] && echo "$run_id begin: $start"
+echo "$app_exe" Main main $trace_arg $output_arg $verbose_arg "<" $input_file
 timeout 10s "$app_exe" Main main $trace_arg $output_arg $verbose_arg < $input_file
 exit_code="$?"
+if [ $exit_code == 124 ]
+then
+    [ "$verbose" == "1" ] && echo "$run_id timed out"
+    if [ "$infer_output_files" == 1 ]
+    then
+    echo "<timeout seconds=\"10\"/>" >> $starting_cwd/logs/$run_id.xml
+    echo "</trace>" >> $starting_cwd/logs/$run_id.xml
+    fi
+fi
 end="$(date +%s.%3N)"
 elapsed="$(echo "scale=3; $end - $start" | bc)"
 [ "$verbose" == "1" ] && (echo  "$run_id end: $end"; echo "$run_id elapsed seconds: $elapsed")
