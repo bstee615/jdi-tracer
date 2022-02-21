@@ -225,11 +225,13 @@ public class Tracer implements AutoCloseable {
 
                         variableMap.put(variableName, valueString);
 
+                        String proxyStr = "";
+                        if (proxy != null) proxyStr = "proxy=\"" + proxy + "\"";
                         traceWriter.append(String.format(
                                 "<variable type=\"%s\" age=\"%s\" name=\"%s\" " +
-                                        "proxy=\"%s\">%s</variable>\n",
+                                        "%s>%s</variable>\n",
                                 variableType, age, variableName,
-                                proxy, valueString));
+                                proxyStr, valueString));
                     } catch (Exception e) {
                         e.printStackTrace();
                         System.out.printf("Exception for variable %s\n", localVariable.name());
