@@ -122,9 +122,9 @@ public class Tracer implements AutoCloseable {
             displayVariables(evt);
         }
         
-        else if (event instanceof VMStartEvent) {
-
-        }
+        else if (event instanceof VMStartEvent) { }
+        else if (event instanceof VMDeathEvent) { }
+        else if (event instanceof VMDisconnectEvent) { }
 
         else {
             System.out.printf("Could not handle %s\n", event.getClass().getName());
@@ -144,15 +144,7 @@ public class Tracer implements AutoCloseable {
 
         // Set breakpoint on method by name
         classType.methodsByName(methodName).forEach(m -> {
-            List<Location> locations = null;
-            try {
-                locations = m.allLineLocations();
-            } catch (AbsentInformationException e) {
-                e.printStackTrace();
-            }
-            // get the first line location of the function and enable the break point
-            assert locations != null;
-            Location location = locations.get(0);
+            Location location = m.location();
             setBreakPointLines(new int[]{location.lineNumber()});
             BreakpointRequest bpReq = erm.createBreakpointRequest(location);
             bpReq.enable();
