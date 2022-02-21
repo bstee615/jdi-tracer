@@ -109,7 +109,7 @@ public class Tracer implements AutoCloseable {
         }
 
         // second called
-        if (event instanceof BreakpointEvent) {
+        else if (event instanceof BreakpointEvent) {
             event.request().disable();
             BreakpointEvent evt = (BreakpointEvent) event;
             displayVariables(evt);
@@ -117,9 +117,17 @@ public class Tracer implements AutoCloseable {
         }
 
         // third called over and over
-        if (event instanceof StepEvent) {
+        else if (event instanceof StepEvent) {
             StepEvent evt = (StepEvent) event;
             displayVariables(evt);
+        }
+        
+        else if (event instanceof VMStartEvent) {
+
+        }
+
+        else {
+            System.out.printf("Could not handle %s\n", event.getClass().getName());
         }
 
         vm.resume();
@@ -250,7 +258,8 @@ public class Tracer implements AutoCloseable {
         if (event.location().toString().contains(
                 debugClass + ":" + breakPointLines[breakPointLines.length - 1])) {
             StepRequest stepRequest = vm.eventRequestManager().createStepRequest(event.thread(),
-                    StepRequest.STEP_LINE, StepRequest.STEP_OVER);
+                    StepRequest.STEP_LINE, StepRequest.STEP_INTO);
+            stepRequest.addClassFilter(debugClass);
             stepRequest.enable();
         }
     }
