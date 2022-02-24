@@ -46,16 +46,19 @@ input_id="$(basename ${input_file%.txt})"
 run_id="java_${problem}_${solution}_${input_id}"
 
 # Create temp dir, copy solution file to it, compile
+[ "$verbose" == "1" ] && echo "Creating tmpdir... $(date)"
 tmpdir="$(mktemp -d)"
 cp "$src_file" "$tmpdir/Main.java"
 cd "$tmpdir"
-[ "$verbose" == "1" ] && echo "Compiling..."
+[ "$verbose" == "1" ] && echo "Done creating tmpdir $(date)"
+[ "$verbose" == "1" ] && echo "Compiling... $(date)"
 javac -encoding utf8 -g Main.java # Fix for compiling Japanese code https://stackoverflow.com/a/14672757/8999671
 exitCode="$?"
 if [ "$exitCode" -ne 0 ]
 then
     exit $exitCode
 fi
+[ "$verbose" == "1" ] && echo "Done compiling $(date)"
 
 # Infer output and trace files
 if [ "$infer_output_files" == 1 ]
